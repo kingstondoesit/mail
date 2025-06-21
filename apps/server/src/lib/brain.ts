@@ -1,19 +1,26 @@
 import { ReSummarizeThread, SummarizeMessage, SummarizeThread } from './brain.fallback.prompts';
+import { getSubscriptionFactory } from './factories/subscription-factory.registry';
+import { EPrompts, EProviders } from '../types';
 import { env } from 'cloudflare:workers';
-import { EPrompts } from '../types';
 
-export const enableBrainFunction = async (connection: { id: string; providerId: string }) => {
-  return await env.zero.subscribe({
-    connectionId: connection.id,
-    providerId: connection.providerId,
-  });
+export const enableBrainFunction = async (connection: { id: string; providerId: EProviders }) => {
+  try {
+    const subscriptionFactory = getSubscriptionFactory(connection.providerId);
+    await subscriptionFactory.subscribe({ body: { connectionId: connection.id } });
+  } catch (error) {
+    console.error(`Failed to enable brain function: ${error}`);
+  }
 };
 
-export const disableBrainFunction = async (connection: { id: string; providerId: string }) => {
-  return await env.zero.unsubscribe({
-    connectionId: connection.id,
-    providerId: connection.providerId,
-  });
+export const disableBrainFunction = async (connection: { id: string; providerId: EProviders }) => {
+  try {
+    const subscriptionFactory = getSubscriptionFactory(connection.providerId);
+    await subscriptionFactory.unsubscribe({
+      body: { connectionId: connection.id, providerId: connection.providerId },
+    });
+  } catch (error) {
+    console.error(`Failed to disable brain function: ${error}`);
+  }
 };
 
 const getPromptName = (connectionId: string, prompt: EPrompts) => {

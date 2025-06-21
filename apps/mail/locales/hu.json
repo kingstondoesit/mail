@@ -169,6 +169,7 @@
       "details": "Részletek",
       "from": "Feladó",
       "to": "Címzett",
+      "replyTo": "Válaszcím",
       "cc": "Másolat",
       "bcc": "Titkos másolat",
       "date": "Dátum",
@@ -327,12 +328,21 @@
       "mb": "{amount} MB"
     },
     "labels": {
+      "color": "Szín",
+      "labelName": "Címke neve",
+      "createLabel": "Címke létrehozása",
       "deleteLabel": "Címke törlése",
       "deleteLabelConfirm": "Biztosan törölni szeretné ezt a címkét?",
       "deleteLabelConfirmDescription": "Ez a művelet nem vonható vissza.",
       "deleteLabelConfirmCancel": "Mégse",
       "deleteLabelConfirmDelete": "Törlés",
-      "deleteLabelSuccess": "Címke sikeresen törölve"
+      "deleteLabelSuccess": "Címke sikeresen törölve",
+      "failedToDeleteLabel": "Nem sikerült törölni a címkét",
+      "deletingLabel": "Címke törlése...",
+      "editLabel": "Címke szerkesztése",
+      "savingLabel": "Címke mentése...",
+      "failedToSavingLabel": "Nem sikerült menteni a címkét",
+      "saveLabelSuccess": "Címke sikeresen mentve"
     }
   },
   "navigation": {
@@ -355,6 +365,7 @@
       "signatures": "Aláírások",
       "shortcuts": "Gyorsbillentyűk",
       "labels": "Címkék",
+      "categories": "Kategóriák",
       "dangerZone": "Veszélyes zóna",
       "deleteAccount": "Fiók törlése",
       "privacy": "Adatvédelem"

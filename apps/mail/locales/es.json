@@ -169,6 +169,7 @@
       "details": "Detalles",
       "from": "De",
       "to": "Para",
+      "replyTo": "Responder a",
       "cc": "Cc",
       "bcc": "Cco",
       "date": "Fecha",
@@ -327,12 +328,21 @@
       "mb": "{amount} MB"
     },
     "labels": {
+      "color": "Color",
+      "labelName": "Nombre de etiqueta",
+      "createLabel": "Crear etiqueta",
       "deleteLabel": "Eliminar etiqueta",
       "deleteLabelConfirm": "¿Estás seguro de que quieres eliminar esta etiqueta?",
       "deleteLabelConfirmDescription": "Esta acción no se puede deshacer.",
       "deleteLabelConfirmCancel": "Cancelar",
       "deleteLabelConfirmDelete": "Eliminar",
-      "deleteLabelSuccess": "Etiqueta eliminada correctamente"
+      "deleteLabelSuccess": "Etiqueta eliminada correctamente",
+      "failedToDeleteLabel": "Error al eliminar etiqueta",
+      "deletingLabel": "Eliminando etiqueta...",
+      "editLabel": "Editar etiqueta",
+      "savingLabel": "Guardando etiqueta...",
+      "failedToSavingLabel": "Error al guardar etiqueta",
+      "saveLabelSuccess": "Etiqueta guardada correctamente"
     }
   },
   "navigation": {
@@ -355,6 +365,7 @@
       "signatures": "Firmas",
       "shortcuts": "Accesos directos",
       "labels": "Etiquetas",
+      "categories": "Categorías",
       "dangerZone": "Zona de peligro",
       "deleteAccount": "Eliminar cuenta",
       "privacy": "Privacidad"

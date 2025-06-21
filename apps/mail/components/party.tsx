@@ -9,7 +9,7 @@ import { funnel } from 'remeda';
 
 const DEBOUNCE_DELAY = 10_000; // 10 seconds is appropriate for real-time notifications
 
-export const NotificationProvider = ({ headers }: { headers: Record<string, string> }) => {
+export const NotificationProvider = () => {
   const trpc = useTRPC();
   //   const { refetch: refetchLabels } = useLabels();
   const queryClient = useQueryClient();
@@ -35,12 +35,9 @@ export const NotificationProvider = ({ headers }: { headers: Record<string, stri
 
   usePartySocket({
     party: 'zero-agent',
-    room: activeConnection?.id ? `${activeConnection.id}` : 'general',
+    room: activeConnection?.id ? String(activeConnection.id) : 'general',
     prefix: 'agents',
     maxRetries: 1,
-    query: {
-      token: headers['cookie'],
-    },
     host: import.meta.env.VITE_PUBLIC_BACKEND_URL!,
     onMessage: async (message: MessageEvent<string>) => {
       try {
