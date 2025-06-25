@@ -7,39 +7,28 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  CurvedArrow,
-  MediumStack,
-  ShortStack,
-  LongStack,
-  Smile,
-  X,
-  Sparkles,
-} from '../icons/icons';
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Check, Command, Loader, Paperclip, Plus, X as XIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TextEffect } from '@/components/motion-primitives/text-effect';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { CurvedArrow, Sparkles, X } from '../icons/icons';
 import { useActiveConnection } from '@/hooks/use-connections';
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEmailAliases } from '@/hooks/use-email-aliases';
 import useComposeEditor from '@/hooks/use-compose-editor';
-import { Loader, Check, X as XIcon } from 'lucide-react';
-import { Command, Paperclip, Plus } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { useTRPC } from '@/providers/query-provider';
 import { useMutation } from '@tanstack/react-query';
+import { useSettings } from '@/hooks/use-settings';
 import { cn, formatFileSize } from '@/lib/utils';
 import { useThread } from '@/hooks/use-threads';
-import { useHotkeys } from 'react-hotkeys-hook';
-import { useSession } from '@/lib/auth-client';
 import { serializeFiles } from '@/lib/schemas';
 import { Input } from '@/components/ui/input';
 import { EditorContent } from '@tiptap/react';
@@ -115,6 +104,7 @@ export function EmailComposer({
   editorClassName,
 }: EmailComposerProps) {
   const { data: aliases } = useEmailAliases();
+  const { data: settings } = useSettings();
   const [showCc, setShowCc] = useState(initialCc.length > 0);
   const [showBcc, setShowBcc] = useState(initialBcc.length > 0);
   const [isLoading, setIsLoading] = useState(false);
@@ -185,7 +175,11 @@ export function EmailComposer({
       subject: initialSubject,
       message: initialMessage,
       attachments: initialAttachments,
-      fromEmail: aliases?.find((alias) => alias.primary)?.email || aliases?.[0]?.email || '',
+      fromEmail:
+        settings?.settings?.defaultEmailAlias ||
+        aliases?.find((alias) => alias.primary)?.email ||
+        aliases?.[0]?.email ||
+        '',
     },
   });
 
@@ -262,6 +256,18 @@ export function EmailComposer({
     }
     // For forward, we start with empty recipients
   }, [mode, emailData?.latest, activeConnection?.email]);
+
+  // keep fromEmail in sync when settings or aliases load afterwards
+  useEffect(() => {
+    const preferred =
+      settings?.settings?.defaultEmailAlias ??
+      aliases?.find((a) => a.primary)?.email ??
+      aliases?.[0]?.email;
+
+    if (preferred && form.getValues('fromEmail') !== preferred) {
+      form.setValue('fromEmail', preferred, { shouldDirty: false });
+    }
+  }, [settings?.settings?.defaultEmailAlias, aliases]);
 
   const { watch, setValue, getValues } = form;
   const toEmails = watch('to');
@@ -577,11 +583,11 @@ export function EmailComposer({
   return (
     <div
       className={cn(
-        'no-scrollbar max-h-[500px] w-full max-w-[750px] overflow-hidden rounded-2xl bg-[#FAFAFA] p-0 py-0 shadow-sm dark:bg-[#202020]',
+        'flex max-h-[500px] w-full max-w-[750px] flex-col overflow-hidden rounded-2xl bg-[#FAFAFA] shadow-sm dark:bg-[#202020]',
         className,
       )}
     >
-      <div className="no-scrollbar dark:bg-panelDark max-h-[500px] grow overflow-y-auto">
+      <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto dark:bg-panelDark">
         {/* To, Cc, Bcc */}
         <div className="shrink-0 overflow-y-auto border-b border-[#E7E7E7] pb-2 dark:border-[#252525]">
           <div className="flex justify-between px-3 pt-3">
@@ -1150,13 +1156,13 @@ export function EmailComposer({
         )}
 
         {/* Message Content */}
-        <div className="grow self-stretch overflow-y-auto border-t bg-[#FFFFFF] px-3 py-3 outline-white/5 dark:bg-[#202020]">
+        <div className="flex-1 overflow-y-auto border-t bg-[#FFFFFF] px-3 py-3 outline-white/5 dark:bg-[#202020]">
           <div
             onClick={() => {
               editor.commands.focus();
             }}
             className={cn(
-              `max-h-[300px] min-h-[200px] w-full`,
+              `min-h-[200px] w-full`,
               editorClassName,
               aiGeneratedMessage !== null ? 'blur-sm' : '',
             )}
@@ -1167,7 +1173,7 @@ export function EmailComposer({
       </div>
 
       {/* Bottom Actions */}
-      <div className="inline-flex w-full items-center justify-between self-stretch rounded-b-2xl bg-[#FFFFFF] px-3 py-3 outline-white/5 dark:bg-[#202020]">
+      <div className="inline-flex w-full shrink-0 items-center justify-between self-stretch rounded-b-2xl bg-[#FFFFFF] px-3 py-3 outline-white/5 dark:bg-[#202020]">
         <div className="flex items-center justify-start gap-2">
           <div className="flex items-center justify-start gap-2">
             <Button size={'xs'} onClick={handleSend} disabled={isLoading || settingsLoading}>
