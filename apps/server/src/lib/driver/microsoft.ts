@@ -535,7 +535,7 @@ export class OutlookMailManager implements MailManager {
     return this.withErrorHandler(
       'sendDraft',
       async () => {
-        await this.graphClient.api(`/me/drafts/${draftId}/send`).post({});
+        await this.graphClient.api(`/me/messages/${draftId}/send`).post({});
       },
       { draftId, data },
     );
@@ -559,6 +559,15 @@ export class OutlookMailManager implements MailManager {
         }
 
         return parsedDraft;
+      },
+      { draftId },
+    );
+  }
+  public deleteDraft(draftId: string) {
+    return this.withErrorHandler(
+      'deleteDraft',
+      async () => {
+        await this.graphClient.api(`/me/messages/${draftId}`).delete();
       },
       { draftId },
     );
@@ -633,7 +642,7 @@ export class OutlookMailManager implements MailManager {
     return this.withErrorHandler(
       'createDraft',
       async () => {
-        const message = await sanitizeTipTapHtml(data.message);
+        const { html: message, inlineImages } = await sanitizeTipTapHtml(data.message);
 
         const toRecipients = Array.isArray(data.to) ? data.to : data.to.split(', ');
 
@@ -671,8 +680,23 @@ export class OutlookMailManager implements MailManager {
           }));
         }
 
+        const allAttachments = [];
+
+        if (inlineImages.length > 0) {
+          for (const image of inlineImages) {
+            allAttachments.push({
+              '@odata.type': '#microsoft.graph.fileAttachment',
+              name: image.cid,
+              contentType: image.mimeType,
+              contentBytes: image.data,
+              contentId: image.cid,
+              isInline: true,
+            });
+          }
+        }
+
         if (data.attachments && data.attachments.length > 0) {
-          outlookMessage.attachments = await Promise.all(
+          const regularAttachments = await Promise.all(
             data.attachments.map(async (file) => {
               const arrayBuffer = await file.arrayBuffer();
               const buffer = Buffer.from(arrayBuffer);
@@ -686,6 +710,11 @@ export class OutlookMailManager implements MailManager {
               };
             }),
           );
+          allAttachments.push(...regularAttachments);
+        }
+
+        if (allAttachments.length > 0) {
+          outlookMessage.attachments = allAttachments;
         }
 
         let res;
@@ -912,20 +941,6 @@ export class OutlookMailManager implements MailManager {
       return false;
     }
   }
-  private async modifyThreadLabels(
-    threadIds: string[],
-    requestBody: unknown, // Gmail-specific type, replace with relevant Outlook logic
-  ) {
-    // This method is Gmail-specific (modifying thread labels).
-    // The equivalent in Outlook is modifying messages (read status, categories)
-    // or moving messages between folders.
-    // The logic from modifyMessageReadStatus and modifyMessageLabelsOrFolders is more relevant.
-    console.warn(
-      'modifyThreadLabels is a Gmail-specific concept. Use modifyMessageReadStatus or modifyMessageLabelsOrFolders.',
-    );
-    // Placeholder
-    return Promise.resolve();
-  }
 
   public deleteAllSpam() {
     console.warn('deleteAllSpam is not implemented for Microsoft');
@@ -988,12 +1003,9 @@ export class OutlookMailManager implements MailManager {
     toRecipients,
     ccRecipients,
     bccRecipients,
-    sentDateTime,
     receivedDateTime,
     internetMessageId,
-    inferenceClassification, // Might indicate if junk
     categories, // Outlook categories map to tags
-    parentFolderId, // Can indicate folder (e.g. 'deleteditems')
     // headers, // Array of Header objects (name, value), doesn't exist in Outlook
   }: Message): Omit<
     ParsedMessage,
@@ -1036,11 +1048,11 @@ export class OutlookMailManager implements MailManager {
         },
       })) || [];
 
-    let references: string | undefined;
-    let inReplyTo: string | undefined;
-    let listUnsubscribe: string | undefined;
-    let listUnsubscribePost: string | undefined;
-    let replyTo: string | undefined;
+    const references: string | undefined = undefined;
+    const inReplyTo: string | undefined = undefined;
+    const listUnsubscribe: string | undefined = undefined;
+    const listUnsubscribePost: string | undefined = undefined;
+    const replyTo: string | undefined = undefined;
 
     // TODO: use headers if available
     // if (headers) {
@@ -1099,15 +1111,15 @@ export class OutlookMailManager implements MailManager {
     headers,
     cc,
     bcc,
-    fromEmail, // In Outlook, this is usually determined by the authenticated user unless using "send on behalf of" or "send as"
   }: IOutgoingMessage): Promise<Message> {
     // Outlook Graph API expects a Message object structure for sending/creating drafts
     console.log(to);
+    const { html: processedMessage, inlineImages } = await sanitizeTipTapHtml(message.trim());
     const outlookMessage: Message = {
       subject: subject,
       body: {
         contentType: 'html', // Or 'text'
-        content: await sanitizeTipTapHtml(message.trim()),
+        content: processedMessage,
       },
       toRecipients:
         to?.map((rec) => ({
@@ -1151,23 +1163,42 @@ export class OutlookMailManager implements MailManager {
       // outlookMessage.references = headers.references as string | undefined; // Example if supported
     }
 
-    if (attachments && attachments.length > 0) {
-      outlookMessage.attachments = await Promise.all(
+    // Handle inline images and attachments
+    const allAttachments = [];
+
+    if (inlineImages.length > 0) {
+      for (const image of inlineImages) {
+        allAttachments.push({
+          '@odata.type': '#microsoft.graph.fileAttachment',
+          name: image.cid,
+          contentType: image.mimeType,
+          contentBytes: image.data,
+          contentId: image.cid,
+          isInline: true,
+        });
+      }
+    }
+
+    if (attachments?.length > 0) {
+      const regularAttachments = await Promise.all(
         attachments.map(async (file) => {
           const arrayBuffer = await file.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
           const base64Content = buffer.toString('base64');
 
-          // Graph API expects a FileAttachment object or ItemAttachment object
-          // Assuming FileAttachment for typical file uploads
           return {
             '@odata.type': '#microsoft.graph.fileAttachment',
             name: file.name,
             contentType: file.type || 'application/octet-stream',
-            contentBytes: base64Content, // Base64 content here
+            contentBytes: base64Content,
           };
         }),
       );
+      allAttachments.push(...regularAttachments);
+    }
+
+    if (allAttachments.length > 0) {
+      outlookMessage.attachments = allAttachments;
     }
 
     return outlookMessage;
@@ -1256,5 +1287,8 @@ export class OutlookMailManager implements MailManager {
       if (isFatal) void deleteActiveConnection();
       throw new StandardizedError(error, operation, context);
     }
+  }
+  listHistory<T>(historyId: string): Promise<{ history: T[]; historyId: string }> {
+    return Promise.resolve({ history: [], historyId });
   }
 }

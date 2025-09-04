@@ -2,8 +2,7 @@ import { getActiveConnection, getZeroDB } from '../server-utils';
 import { getContext } from 'hono/context-storage';
 import type { gmail_v1 } from '@googleapis/gmail';
 import type { HonoContext } from '../../ctx';
-import { env } from 'cloudflare:workers';
-import { createDriver } from '../driver';
+
 import { toByteArray } from 'base64-js';
 export const FatalErrors = ['invalid_grant'];
 
@@ -15,32 +14,12 @@ export const deleteActiveConnection = async () => {
   if (!session) return console.log('No session found');
   try {
     await c.var.auth.api.signOut({ headers: c.req.raw.headers });
-    const db = getZeroDB(session.user.id);
-    await db.deleteActiveConnection(session.user.id, activeConnection.id);
+    const db = await getZeroDB(session.user.id);
+    await db.deleteActiveConnection(activeConnection.id);
   } catch (error) {
     console.error('Server: Error deleting connection:', error);
     throw error;
   }
-};
-
-export const getActiveDriver = async () => {
-  const c = getContext<HonoContext>();
-  const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session) throw new Error('Invalid session');
-  const activeConnection = await getActiveConnection();
-  if (!activeConnection) throw new Error('Invalid connection');
-
-  if (!activeConnection || !activeConnection.accessToken || !activeConnection.refreshToken)
-    throw new Error('Invalid connection');
-
-  return createDriver(activeConnection.providerId, {
-    auth: {
-      accessToken: activeConnection.accessToken,
-      refreshToken: activeConnection.refreshToken,
-      userId: activeConnection.userId,
-      email: activeConnection.email,
-    },
-  });
 };
 
 export const fromBase64Url = (str: string) => str.replace(/-/g, '+').replace(/_/g, '/');

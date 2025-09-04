@@ -31,6 +31,10 @@ export function useOptimisticThreadState(threadId: string) {
       optimisticRead: null as boolean | null,
       optimisticDestination: null as string | null,
       optimisticImportant: null as boolean | null,
+      optimisticLabels: {
+        addedLabelIds: [] as string[],
+        removedLabelIds: [] as string[],
+      },
     };
 
     if (!isAffectedByOptimisticAction || !optimisticActions || optimisticActions.length === 0) {
@@ -57,11 +61,31 @@ export function useOptimisticThreadState(threadId: string) {
 
         case 'LABEL':
           states.isAddingLabel = action.add;
+          if (action.add) {
+            states.optimisticLabels.addedLabelIds.push(...action.labelIds);
+          } else {
+            states.optimisticLabels.removedLabelIds.push(...action.labelIds);
+          }
           break;
 
         case 'IMPORTANT':
           states.isImportant = true;
           states.optimisticImportant = action.important;
+          break;
+
+        case 'SNOOZE':
+          states.shouldHide = true;
+          states.optimisticDestination = 'snoozed';
+          break;
+
+        case 'UNSNOOZE':
+          states.shouldHide = true;
+          states.optimisticDestination = 'inbox';
+          break;
+
+        case 'DELETE_DRAFT':
+          states.shouldHide = true;
+          states.isRemoving = true;
           break;
       }
     });

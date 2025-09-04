@@ -1,46 +1,34 @@
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  } from '@/components/ui/dialog';
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+  } from '@/components/ui/form';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { SettingsCard } from '@/components/settings/settings-card';
 import { LabelDialog } from '@/components/labels/label-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CurvedArrow } from '@/components/icons/icons';
+
 import { Separator } from '@/components/ui/separator';
 import { useTRPC } from '@/providers/query-provider';
 import { useMutation } from '@tanstack/react-query';
-import { Check, Plus, Pencil } from 'lucide-react';
+import { Plus, Pencil } from 'lucide-react';
 import { type Label as LabelType } from '@/types';
 import { Button } from '@/components/ui/button';
-import { HexColorPicker } from 'react-colorful';
+
 import { Bin } from '@/components/icons/icons';
 import { useLabels } from '@/hooks/use-labels';
-import { GMAIL_COLORS } from '@/lib/constants';
+
+
+
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useTranslations } from 'use-intl';
-import { useForm } from 'react-hook-form';
-import { Command } from 'lucide-react';
-import { COLORS } from './colors';
+
+import { m } from '@/paraglide/messages';
+
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 export default function LabelsPage() {
-  const t = useTranslations();
-  const { data: labels, isLoading, error, refetch } = useLabels();
+  const { userLabels: labels, isLoading, error, refetch } = useLabels();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLabel, setEditingLabel] = useState<LabelType | null>(null);
 
@@ -55,18 +43,18 @@ export default function LabelsPage() {
         ? updateLabel({ id: editingLabel.id!, name: data.name, color: data.color })
         : createLabel({ color: data.color, name: data.name }),
       {
-        loading: t('common.labels.savingLabel'),
-        success: t('common.labels.saveLabelSuccess'),
-        error: t('common.labels.failedToSavingLabel'),
+        loading: m['common.labels.savingLabel'](),
+        success: m['common.labels.saveLabelSuccess'](),
+        error: m['common.labels.failedToSavingLabel'](),
       },
     );
   };
 
   const handleDelete = async (id: string) => {
     toast.promise(deleteLabel({ id }), {
-      loading:  t('common.labels.deletingLabel'),
-      success: t('common.labels.deleteLabelSuccess'),
-      error: t('common.labels.failedToDeleteLabel'),
+      loading: m['common.labels.deletingLabel'](),
+      success: m['common.labels.deleteLabelSuccess'](),
+      error: m['common.labels.failedToDeleteLabel'](),
       finally: async () => {
         await refetch();
       },
@@ -81,14 +69,14 @@ export default function LabelsPage() {
   return (
     <div className="grid gap-6">
       <SettingsCard
-        title={t('pages.settings.labels.title')}
-        description={t('pages.settings.labels.description')}
+        title={m['pages.settings.labels.title']()}
+        description={m['pages.settings.labels.description']()}
         action={
           <LabelDialog
             trigger={
-              <Button onClick={() => setEditingLabel(null)}>
+              <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                {t('common.mail.createNewLabel')}
+                {m['common.mail.createNewLabel']()}
               </Button>
             }
             editingLabel={editingLabel}
@@ -114,7 +102,7 @@ export default function LabelsPage() {
                 <p className="text-muted-foreground py-4 text-center text-sm">{error.message}</p>
               ) : labels?.length === 0 ? (
                 <p className="text-muted-foreground py-4 text-center text-sm">
-                 {t('common.mail.noLabelsAvailable')}
+                  {m['common.mail.noLabelsAvailable']()}
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-6">
@@ -135,7 +123,7 @@ export default function LabelsPage() {
                             <span>{label.name}</span>
                           </Badge>
                         </div>
-                        <div className="dark:bg-panelDark absolute right-2 z-[25] flex items-center gap-1 rounded-xl border bg-white p-1 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                        <div className="dark:bg-panelDark absolute right-2 z-25 flex items-center gap-1 rounded-xl border bg-white p-1 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
@@ -148,7 +136,7 @@ export default function LabelsPage() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent className="dark:bg-panelDark mb-1 bg-white">
-                               {t('common.labels.editLabel')}
+                              {m['common.labels.editLabel']()}
                             </TooltipContent>
                           </Tooltip>
                           <Tooltip>
@@ -163,7 +151,7 @@ export default function LabelsPage() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent className="dark:bg-panelDark mb-1 bg-white">
-                              {t('common.labels.deleteLabel')}
+                              {m['common.labels.deleteLabel']()}
                             </TooltipContent>
                           </Tooltip>
                         </div>

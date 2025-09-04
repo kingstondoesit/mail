@@ -27,6 +27,14 @@ Thank you for your interest in contributing to 0.email! We're excited to have yo
 
    - Click the 'Fork' button at the top right of this repository
    - Clone your fork locally: `git clone https://github.com/YOUR-USERNAME/Zero.git`
+   - Next, add an `upstream` [remote](https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes) to sync this repository with your local fork.
+
+   ```bash
+   # HTTPS
+   git remote add upstream https://github.com/Mail-0/Zero.git
+   # or SSH
+   git remote add upstream git@github.com:Mail-0/Zero.git
+   ```
 
 2. **Set Up Development Environment**
    - Install [pnpm](https://pnpm.io)
@@ -70,6 +78,8 @@ Thank you for your interest in contributing to 0.email! We're excited to have yo
 
    - Make sure the app runs without errors
    - Test your feature thoroughly
+
+   - Please lint using `pnpm dlx oxlint@latest` or by downloading an IDE extension here: https://oxc.rs/docs/guide/usage/linter.html#vscode-extension
 
 5. **Commit Your Changes**
 
@@ -185,7 +195,7 @@ When implementing new features, follow these guidelines:
 
 1. **Add English Source Strings**
 
-   - Place all user-facing text in `apps/mail/locales/en.json`
+   - Place all user-facing text in `apps/mail/messages/en.json`
    - Organize strings according to the existing structure
    - Use descriptive, hierarchical keys that identify the feature and context
    - Example: `"pages.settings.connections.disconnectSuccess": "Account disconnected successfully"`
@@ -202,7 +212,7 @@ When implementing new features, follow these guidelines:
    - Context is clear for translators
    - The feature works properly with the default language
 
-For more details about our translation process and how translators contribute, see [TRANSLATION.md](../TRANSLATION.md).
+For more details about our translation process and how translators contribute, see [TRANSLATION.md](TRANSLATION.md).
 
 ## Testing
 

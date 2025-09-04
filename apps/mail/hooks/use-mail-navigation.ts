@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
+
+import { useCallback, useEffect, useRef } from 'react';
 import { useOptimisticActions } from './use-optimistic-actions';
 import { useMail } from '@/components/mail/use-mail';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { atom, useAtom } from 'jotai';
+import { useQueryState } from 'nuqs';
 
 export const focusedIndexAtom = atom<number | null>(null);
 export const mailNavigationCommandAtom = atom<null | 'next' | 'previous'>(null);
@@ -22,6 +24,8 @@ export function useMailNavigation({ items, containerRef, onNavigate }: UseMailNa
   itemsRef.current = items;
   const onNavigateRef = useRef(onNavigate);
   onNavigateRef.current = onNavigate;
+  const [threadId] = useQueryState('threadId');
+  const [isCommandPaletteOpen] = useQueryState('isCommandPaletteOpen');
 
   const hoveredMailRef = useRef<string | null>(null);
   const keyboardActiveRef = useRef(false);
@@ -75,8 +79,7 @@ export function useMailNavigation({ items, containerRef, onNavigate }: UseMailNa
       const message = itemsRef.current[index];
       const threadId = message.id;
 
-      const currentThreadId = window.location.search.includes('threadId=');
-      if (currentThreadId) {
+      if (threadId) {
         onNavigateRef.current(threadId);
         optimisticMarkAsRead([threadId], true);
       }
@@ -86,7 +89,7 @@ export function useMailNavigation({ items, containerRef, onNavigate }: UseMailNa
         bulkSelected: [],
       }));
     },
-    [setMail],
+    [setMail, threadId],
   );
 
   const navigateNext = useCallback(() => {
@@ -193,12 +196,15 @@ export function useMailNavigation({ items, containerRef, onNavigate }: UseMailNa
     keyboardActiveRef.current = false;
   }, [setFocusedIndex, onNavigateRef]);
 
-  useHotkeys('ArrowUp', handleArrowUp, { preventDefault: true });
-  useHotkeys('ArrowDown', handleArrowDown, { preventDefault: true });
-  useHotkeys('j', handleArrowDown);
-  useHotkeys('k', handleArrowUp);
-  useHotkeys('Enter', handleEnter, { preventDefault: true });
-  useHotkeys('Escape', handleEscape, { preventDefault: true });
+  useHotkeys('ArrowUp', handleArrowUp, { preventDefault: true, enabled: !isCommandPaletteOpen });
+  useHotkeys('ArrowDown', handleArrowDown, {
+    preventDefault: true,
+    enabled: !isCommandPaletteOpen,
+  });
+  useHotkeys('j', handleArrowDown, { enabled: !isCommandPaletteOpen });
+  useHotkeys('k', handleArrowUp, { enabled: !isCommandPaletteOpen });
+  useHotkeys('Enter', handleEnter, { preventDefault: true, enabled: !isCommandPaletteOpen });
+  useHotkeys('Escape', handleEscape, { preventDefault: true, enabled: !isCommandPaletteOpen });
 
   const handleMouseEnter = useCallback(
     (threadId: string) => {
@@ -239,6 +245,7 @@ export function useMailNavigation({ items, containerRef, onNavigate }: UseMailNa
     const MOVE_DELAY = 100;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isCommandPaletteOpen) return;
       if (!event.repeat) return;
       if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
 
@@ -266,7 +273,13 @@ export function useMailNavigation({ items, containerRef, onNavigate }: UseMailNa
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [fastScroll]);
+  }, [fastScroll, isCommandPaletteOpen]);
+
+  useEffect(() => {
+    if (isCommandPaletteOpen) {
+      keyboardActiveRef.current = false;
+    }
+  }, [isCommandPaletteOpen]);
 
   return {
     focusedIndex,

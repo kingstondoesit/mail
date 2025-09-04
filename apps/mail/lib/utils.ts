@@ -1,8 +1,9 @@
-import { format, isToday, isThisMonth, differenceInCalendarMonths } from 'date-fns';
+import { isToday, isThisMonth, differenceInCalendarMonths } from 'date-fns';
 import { getBrowserTimezone } from './timezones';
 import { formatInTimeZone } from 'date-fns-tz';
 import { MAX_URL_LENGTH } from './constants';
 import { clsx, type ClassValue } from 'clsx';
+import type { Customer } from 'autumn-js';
 import { twMerge } from 'tailwind-merge';
 import type { Sender } from '@/types';
 import LZString from 'lz-string';
@@ -14,6 +15,7 @@ export const FOLDERS = {
   BIN: 'bin',
   DRAFT: 'draft',
   SENT: 'sent',
+  SNOOZED: 'snoozed',
 } as const;
 
 export const LABELS = {
@@ -23,6 +25,7 @@ export const LABELS = {
   IMPORTANT: 'IMPORTANT',
   SENT: 'SENT',
   TRASH: 'TRASH',
+  SNOOZED: 'SNOOZED',
 } as const;
 
 export const FOLDER_NAMES = [
@@ -34,6 +37,7 @@ export const FOLDER_NAMES = [
   'important',
   'sent',
   'draft',
+  'snoozed',
 ];
 
 export const FOLDER_TAGS: Record<string, string[]> = {
@@ -42,6 +46,7 @@ export const FOLDER_TAGS: Record<string, string[]> = {
   [FOLDERS.ARCHIVE]: [],
   [FOLDERS.SENT]: [LABELS.SENT],
   [FOLDERS.BIN]: [LABELS.TRASH],
+  [FOLDERS.SNOOZED]: [LABELS.SNOOZED],
 };
 
 export const getFolderTags = (folder: string): string[] => {
@@ -66,23 +71,82 @@ export const getCookie = (key: string): string | null => {
   return cookies?.[key] ?? null;
 };
 
-export const formatDate = (date: string) => {
+export const parseAndValidateDate = (dateString: string): Date | null => {
   try {
-    // Handle empty or invalid input
-    if (!date) {
-      return '';
+    // Handle empty input
+    if (!dateString) {
+      return null;
     }
 
-    const timezone = getBrowserTimezone();
     // Parse the date string to a Date object
-    const dateObj = new Date(date);
-    const now = new Date();
+    const dateObj = new Date(dateString);
 
     // Check if the date is valid
     if (isNaN(dateObj.getTime())) {
-      console.error('Invalid date', date);
-      return '';
+      console.error('Invalid date', dateString);
+      return null;
     }
+
+    return dateObj;
+  } catch (error) {
+    console.error('Error parsing date', error);
+    return null;
+  }
+};
+
+/**
+ * Helper function to determine if a separate time display is needed
+ * Returns false for emails from today or within last 12 hours since formatDate already shows time for these
+ */
+export const shouldShowSeparateTime = (dateString: string | undefined): boolean => {
+  if (!dateString) return false;
+
+  const dateObj = parseAndValidateDate(dateString);
+  if (!dateObj) return false;
+
+  const now = new Date();
+
+  // Don't show separate time if email is from today
+  if (isToday(dateObj)) return false;
+
+  // Don't show separate time if email is within the last 12 hours
+  const hoursDifference = (now.getTime() - dateObj.getTime()) / (1000 * 60 * 60);
+  if (hoursDifference <= 12) return false;
+
+  // Show separate time for older emails
+  return true;
+};
+
+/**
+ * Formats a date with different formatting logic based on parameters
+ * Overloaded to handle both mail date formatting and notes date formatting
+ */
+export function formatDate(dateInput: string | Date | number): string {
+  if (typeof dateInput === 'number') {
+    dateInput = new Date(dateInput).toISOString();
+  }
+
+  // Notes formatting logic (when date is a Date object)
+  if (dateInput instanceof Date) {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : (dateInput as Date);
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  // Original mail formatting logic
+  const dateObj = parseAndValidateDate(dateInput as string);
+  if (!dateObj) {
+    return '';
+  }
+
+  try {
+    const timezone = getBrowserTimezone();
+    const now = new Date();
 
     // If it's today, always show the time
     if (isToday(dateObj)) {
@@ -108,6 +172,23 @@ export const formatDate = (date: string) => {
     console.error('Error formatting date', error);
     return '';
   }
+}
+
+export const formatTime = (date: string) => {
+  const dateObj = parseAndValidateDate(date);
+  if (!dateObj) {
+    return '';
+  }
+
+  try {
+    const timezone = getBrowserTimezone();
+
+    // Always return the time in h:mm a format
+    return formatInTimeZone(dateObj, timezone, 'h:mm a');
+  } catch (error) {
+    console.error('Error formatting time', error);
+    return '';
+  }
 };
 
 export const cleanEmailAddress = (email: string = '') => {
@@ -121,13 +202,6 @@ export const truncateFileName = (name: string, maxLength = 15) => {
     return `${name.slice(0, maxLength - 5)}...${name.slice(extIndex)}`;
   }
   return `${name.slice(0, maxLength)}...`;
-};
-
-export type FilterSuggestion = {
-  filter: string;
-  description: string;
-  icon: React.ReactNode;
-  prefix: string;
 };
 
 export const extractFilterValue = (filter: string): string => {
@@ -273,7 +347,6 @@ export const constructReplyBody = (
   originalDate: string,
   originalSender: Sender | undefined,
   otherRecipients: Sender[],
-  quotedMessage?: string,
 ) => {
   const senderName = originalSender?.name || originalSender?.email || 'Unknown Sender';
   const recipientEmails = otherRecipients.map((r) => r.email).join(', ');
@@ -297,7 +370,6 @@ export const constructForwardBody = (
   originalDate: string,
   originalSender: Sender | undefined,
   otherRecipients: Sender[],
-  quotedMessage?: string,
 ) => {
   const senderName = originalSender?.name || originalSender?.email || 'Unknown Sender';
   const recipientEmails = otherRecipients.map((r) => r.email).join(', ');
@@ -416,7 +488,6 @@ export function parseNaturalLanguageSearch(query: string): string {
 export function parseNaturalLanguageDate(query: string): { from?: Date; to?: Date } | null {
   const now = new Date();
   const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
 
   // Common date patterns
   const patterns = [
@@ -546,4 +617,14 @@ export const withExponentialBackoff = async <T>(
       retries++;
     }
   }
+};
+
+const PRO_PLANS = ['pro-example', 'pro_annual', 'team', 'enterprise'] as const;
+
+export const isProCustomer = (customer: Customer) => {
+  return customer?.products && Array.isArray(customer.products)
+    ? customer.products.some((product) =>
+        PRO_PLANS.some((plan) => product.id?.includes(plan) || product.name?.includes(plan)),
+      )
+    : false;
 };

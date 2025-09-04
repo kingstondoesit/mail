@@ -1,24 +1,21 @@
 import { createRateLimiterMiddleware, privateProcedure, publicProcedure, router } from '../trpc';
 import { getActiveConnection, getZeroDB } from '../../lib/server-utils';
-import { connection, user as user_ } from '../../db/schema';
 import { Ratelimit } from '@upstash/ratelimit';
-import { env } from 'cloudflare:workers';
 import { TRPCError } from '@trpc/server';
-import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 export const connectionsRouter = router({
   list: privateProcedure
     .use(
       createRateLimiterMiddleware({
-        limiter: Ratelimit.slidingWindow(60, '1m'),
+        limiter: Ratelimit.slidingWindow(120, '1m'),
         generatePrefix: ({ sessionUser }) => `ratelimit:get-connections-${sessionUser?.id}`,
       }),
     )
     .query(async ({ ctx }) => {
       const { sessionUser } = ctx;
-      const db = getZeroDB(sessionUser.id);
-      const connections = await db.findManyConnections(sessionUser.id);
+      const db = await getZeroDB(sessionUser.id);
+      const connections = await db.findManyConnections();
 
       const disconnectedIds = connections
         .filter((c) => !c.accessToken || !c.refreshToken)
@@ -43,22 +40,21 @@ export const connectionsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { connectionId } = input;
       const user = ctx.sessionUser;
-      const db = getZeroDB(user.id);
-      const foundConnection = await db.findUserConnection(user.id, connectionId);
+      const db = await getZeroDB(user.id);
+      const foundConnection = await db.findUserConnection(connectionId);
       if (!foundConnection) throw new TRPCError({ code: 'NOT_FOUND' });
-      await db.updateUser(user.id, { defaultConnectionId: connectionId });
+      await db.updateUser({ defaultConnectionId: connectionId });
     }),
   delete: privateProcedure
     .input(z.object({ connectionId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       const { connectionId } = input;
       const user = ctx.sessionUser;
-      const db = getZeroDB(user.id);
-      await db.deleteConnection(connectionId, user.id);
+      const db = await getZeroDB(user.id);
+      await db.deleteConnection(connectionId);
 
       const activeConnection = await getActiveConnection();
-      if (connectionId === activeConnection.id)
-        await db.updateUser(user.id, { defaultConnectionId: null });
+      if (connectionId === activeConnection.id) await db.updateUser({ defaultConnectionId: null });
     }),
   getDefault: publicProcedure.query(async ({ ctx }) => {
     if (!ctx.sessionUser) return null;

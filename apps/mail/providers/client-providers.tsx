@@ -1,3 +1,5 @@
+import { useKeyboardLayout } from '@/components/keyboard-layout-indicator';
+import { LoadingProvider } from '@/components/context/loading-context';
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v7';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { PostHogProvider } from '@/lib/posthog-provider';
@@ -9,6 +11,7 @@ import { ThemeProvider } from 'next-themes';
 
 export function ClientProviders({ children }: PropsWithChildren) {
   const { data } = useSettings();
+  useKeyboardLayout();
 
   const theme = data?.settings.colorTheme || 'system';
 
@@ -23,8 +26,10 @@ export function ClientProviders({ children }: PropsWithChildren) {
         >
           <SidebarProvider>
             <PostHogProvider>
-              {children}
-              <Toaster />
+              <LoadingProvider>
+                {children}
+                <Toaster />
+              </LoadingProvider>
             </PostHogProvider>
           </SidebarProvider>
         </ThemeProvider>

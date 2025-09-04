@@ -28,18 +28,25 @@ export const createDraftData = z.object({
   bcc: z.string().optional(),
   subject: z.string(),
   message: z.string(),
-  attachments: z.array(serializedFileSchema).transform(deserializeFiles).optional(),
+  attachments: z.array(serializedFileSchema).optional(),
   id: z.string().nullable(),
   threadId: z.string().nullable(),
+  fromEmail: z.string().nullable(),
 });
 
 export type CreateDraftData = z.infer<typeof createDraftData>;
 
 export const mailCategorySchema = z.object({
-  id: z.enum(['Important', 'All Mail', 'Personal', 'Promotions', 'Updates', 'Unread']),
+  id: z
+    .string()
+    .regex(
+      /^[a-zA-Z0-9\-_ ]+$/,
+      'Category ID must contain only alphanumeric characters, hyphens, underscores, and spaces',
+    ),
   name: z.string(),
   searchValue: z.string(),
   order: z.number().int(),
+  icon: z.string().optional(),
   isDefault: z.boolean().optional().default(false),
 });
 
@@ -49,43 +56,25 @@ export const defaultMailCategories: MailCategory[] = [
   {
     id: 'Important',
     name: 'Important',
-    searchValue: 'is:important NOT is:sent NOT is:draft',
+    searchValue: 'IMPORTANT',
     order: 0,
+    icon: 'Lightning',
     isDefault: false,
   },
   {
     id: 'All Mail',
     name: 'All Mail',
-    searchValue: 'NOT is:draft (is:inbox OR (is:sent AND to:me))',
+    searchValue: '',
     order: 1,
+    icon: 'Mail',
     isDefault: true,
-  },
-  {
-    id: 'Personal',
-    name: 'Personal',
-    searchValue: 'is:personal NOT is:sent NOT is:draft',
-    order: 2,
-    isDefault: false,
-  },
-  {
-    id: 'Promotions',
-    name: 'Promotions',
-    searchValue: 'is:promotions NOT is:sent NOT is:draft',
-    order: 3,
-    isDefault: false,
-  },
-  {
-    id: 'Updates',
-    name: 'Updates',
-    searchValue: 'is:updates NOT is:sent NOT is:draft',
-    order: 4,
-    isDefault: false,
   },
   {
     id: 'Unread',
     name: 'Unread',
-    searchValue: 'is:unread NOT is:sent NOT is:draft',
+    searchValue: 'UNREAD',
     order: 5,
+    icon: 'ScanEye',
     isDefault: false,
   },
 ];
@@ -113,12 +102,17 @@ export const userSettingsSchema = z.object({
   timezone: z.string(),
   dynamicContent: z.boolean().optional(),
   externalImages: z.boolean(),
-  customPrompt: z.string(),
+  customPrompt: z.string().default(''),
   isOnboarded: z.boolean().optional(),
   trustedSenders: z.string().array().optional(),
   colorTheme: z.enum(['light', 'dark', 'system']).default('system'),
   zeroSignature: z.boolean().default(true),
   categories: categoriesSchema.optional(),
+  defaultEmailAlias: z.string().optional(),
+  undoSendEnabled: z.boolean().default(false),
+  imageCompression: z.enum(['low', 'medium', 'original']).default('medium'),
+  autoRead: z.boolean().default(true),
+  animations: z.boolean().default(false),
 });
 
 export type UserSettings = z.infer<typeof userSettingsSchema>;
@@ -133,5 +127,10 @@ export const defaultUserSettings: UserSettings = {
   isOnboarded: false,
   colorTheme: 'system',
   zeroSignature: true,
+  autoRead: true,
+  defaultEmailAlias: '',
   categories: defaultMailCategories,
+  undoSendEnabled: false,
+  imageCompression: 'medium',
+  animations: false,
 };

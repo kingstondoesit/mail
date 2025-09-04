@@ -1,8 +1,8 @@
 import { disableBrainFunction, getPrompts } from '../../lib/brain';
-import { EProviders, type ISubscribeBatch } from '../../types';
+import { EProviders, EPrompts, type ISubscribeBatch } from '../../types';
 import { activeConnectionProcedure, router } from '../trpc';
 import { setSubscribedState } from '../../lib/utils';
-import { env } from 'cloudflare:workers';
+import { env } from '../../env';
 import { z } from 'zod';
 
 const labelSchema = z.object({
@@ -80,6 +80,22 @@ export const brainRouter = router({
     const connection = ctx.activeConnection;
     return await getPrompts({ connectionId: connection.id });
   }),
+  updatePrompt: activeConnectionProcedure
+    .input(
+      z.object({
+        promptType: z.nativeEnum(EPrompts),
+        content: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const connection = ctx.activeConnection;
+
+      const promptName = `${connection.id}-${input.promptType}`;
+
+      await env.prompts_storage.put(promptName, input.content);
+
+      return { success: true };
+    }),
   updateLabels: activeConnectionProcedure
     .input(
       z.object({

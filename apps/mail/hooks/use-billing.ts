@@ -1,5 +1,7 @@
 import { useAutumn, useCustomer } from 'autumn-js/react';
-import { useMemo } from 'react';
+import { signOut } from '@/lib/auth-client';
+import { isProCustomer } from '@/lib/utils';
+import { useEffect, useMemo } from 'react';
 
 type FeatureState = {
   total: number;
@@ -57,21 +59,18 @@ const FEATURE_IDS = {
   BRAIN: 'brain-activity',
 } as const;
 
-const PRO_PLANS = ['pro-example', 'pro_annual', 'team', 'enterprise'] as const;
-
 export const useBilling = () => {
-  const { customer, refetch, isLoading } = useCustomer();
+  const { customer, refetch, isLoading, error } = useCustomer();
   const { attach, track, openBillingPortal } = useAutumn();
 
-  const isPro = useMemo(() => {
-    if (!customer?.products || !Array.isArray(customer.products)) return false;
-    return customer.products.some((product) =>
-      PRO_PLANS.some((plan) => product.id?.includes(plan) || product.name?.includes(plan)),
-    );
-  }, [customer]);
+  useEffect(() => {
+    if (error) signOut();
+  }, [error]);
 
-  const customerFeatures = useMemo(() => {
-    if (!customer?.features) return DEFAULT_FEATURES;
+  const { isPro, ...customerFeatures } = useMemo(() => {
+    const isPro = customer ? isProCustomer(customer) : false;
+
+    if (!customer?.features) return { isPro, ...DEFAULT_FEATURES };
 
     const features = { ...DEFAULT_FEATURES };
 
@@ -117,7 +116,7 @@ export const useBilling = () => {
       };
     }
 
-    return features;
+    return { isPro, ...features };
   }, [customer]);
 
   return {

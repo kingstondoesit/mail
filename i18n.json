@@ -22,13 +22,13 @@
       "hu",
       "fa",
       "vi",
-      "zh_CN",
-      "zh_TW"
+      "zh-CN",
+      "zh-TW"
     ]
   },
   "buckets": {
     "json": {
-      "include": ["apps/mail/locales/[locale].json"]
+      "include": ["apps/mail/messages/[locale].json"]
     }
   }
 }

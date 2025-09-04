@@ -2,10 +2,14 @@ import {
   getWritingStyleMatrixForConnectionId,
   type WritingStyleMatrix,
 } from '../../../services/writing-style-service';
+import { escapeXml } from '../../../thread-workflow-utils/workflow-utils';
 import { StyledEmailAssistantSystemPrompt } from '../../../lib/prompts';
 import { webSearch } from '../../../routes/agent/tools';
 import { activeConnectionProcedure } from '../../trpc';
+import { getPrompt } from '../../../lib/brain';
 import { stripHtml } from 'string-strip-html';
+import { EPrompts } from '../../../types';
+import { env } from '../../../env';
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { z } from 'zod';
@@ -33,7 +37,10 @@ export async function composeEmail(input: ComposeEmailInput) {
     connectionId,
   });
 
-  const systemPrompt = StyledEmailAssistantSystemPrompt();
+  const systemPrompt = await getPrompt(
+    `${connectionId}-${EPrompts.Compose}`,
+    StyledEmailAssistantSystemPrompt(),
+  );
   const userPrompt = EmailAssistantPrompt({
     currentSubject: emailSubject,
     recipients: [...(to ?? []), ...(cc ?? [])],
@@ -79,7 +86,7 @@ export async function composeEmail(input: ComposeEmailInput) {
         ];
 
   const { text } = await generateText({
-    model: openai('gpt-4o-mini'),
+    model: openai(env.OPENAI_MINI_MODEL || 'gpt-4o-mini'),
     messages: [
       {
         role: 'system',
@@ -98,7 +105,7 @@ export async function composeEmail(input: ComposeEmailInput) {
     presencePenalty: 0.1,
     maxRetries: 1,
     tools: {
-      webSearch,
+      webSearch: webSearch(),
     },
   });
 
@@ -185,14 +192,6 @@ const MessagePrompt = ({
   return parts.join('\n');
 };
 
-const escapeXml = (s: string) =>
-  s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-
 const EmailAssistantPrompt = ({
   currentSubject,
   recipients,
@@ -268,7 +267,7 @@ const generateSubject = async (message: string, styleProfile?: WritingStyleMatri
   );
 
   const { text } = await generateText({
-    model: openai('gpt-4o'),
+    model: openai(env.OPENAI_MODEL || 'gpt-4o'),
     messages: [
       {
         role: 'system',
